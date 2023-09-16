@@ -28,14 +28,26 @@ pub fn decode(input: []const u8) ![]const u8 {
     var bytes = std.ArrayList(u8).init(std.heap.page_allocator);
     defer bytes.deinit();
 
-    for (input, 0..) |char, index| {
-        if (index % 2 != 0) {
-            const previous = try hex_lookup(input[index - 1]);
-            const current = try hex_lookup(char);
-            try bytes.append((previous << 4) | current);
-        }
+    var i: usize = 0;
+    while (i < input.len) : (i += 2) {
+        const previous = try hex_lookup(input[i]);
+        const current = try hex_lookup(input[i + 1]);
+        try bytes.append((previous << 4) | current);
     }
     if (input.len % 2 != 0) try bytes.append(input[input.len - 1]);
 
     return bytes.toOwnedSlice();
+}
+
+pub fn encode(input: []const u8) ![]const u8 {
+    const table = "0123456789abcdef";
+    const allocator = std.heap.page_allocator;
+    var encoded = try allocator.alloc(u8, input.len * 2);
+    for (input, 0..) |value, index| {
+        const first = try table[value >> 4];
+        const second = try table[value & 0xF];
+        encoded[index * 2] = first;
+        encoded[index * 2 + 1] = second;
+    }
+    return encoded;
 }
