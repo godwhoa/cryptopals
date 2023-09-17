@@ -43,3 +43,18 @@ test "test set 1 challenge 4" {
     const expected = "Now that the party is jumping\n";
     try std.testing.expectEqualStrings(top, expected);
 }
+
+pub fn main() !void {
+    const chiphers = try io.read_lines("data/s1c4.txt");
+    const allocator = std.heap.page_allocator;
+    var candidates = std.ArrayList([]u8).init(allocator);
+    defer candidates.deinit();
+    for (chiphers) |chipher| {
+        const decoded = try hex.decode(chipher);
+        const possible_candidates = try xor.decipher(decoded);
+        const top_candidate = try english.most_english_like(possible_candidates);
+        try candidates.append(top_candidate);
+    }
+    const top = try english.most_english_like(candidates.items);
+    std.debug.print("top: {s}\n", .{top});
+}
