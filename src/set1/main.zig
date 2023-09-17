@@ -29,17 +29,52 @@ test "test set 1 challenge 3" {
 }
 
 test "test set 1 challenge 4" {
-    const chiphers = try io.read_lines("data/s1c4.txt");
-    const allocator = std.heap.page_allocator;
-    var candidates = std.ArrayList([]u8).init(allocator);
-    defer candidates.deinit();
-    for (chiphers) |chipher| {
-        const decoded = try hex.decode(chipher);
-        const possible_candidates = try xor.decipher(decoded);
-        const top_candidate = try english.most_english_like(possible_candidates);
-        try candidates.append(top_candidate);
+    var allocator = std.heap.page_allocator;
+
+    const Q = std.atomic.Queue([]u8);
+    var lines = try io.read_lines("data/s1c4.txt");
+    var in = std.atomic.Queue([]u8).init();
+    for (lines) |line| {
+        var node = try allocator.create(Q.Node);
+        node.* = .{ .prev = undefined, .next = undefined, .data = line };
+        in.put(node);
     }
-    const top = try english.most_english_like(candidates.items);
+
+    var out = std.atomic.Queue([]u8).init();
+    var wg = std.Thread.WaitGroup{};
+
+    for (0..10) |_| {
+        _ = try std.Thread.spawn(.{}, worker, .{ &in, &out, &wg, &allocator });
+    }
+    wg.wait();
+
+    var top_candidates = std.ArrayList([]u8).init(allocator);
+    while (!out.isEmpty()) {
+        const node = out.get().?;
+        try top_candidates.append(node.data);
+    }
+
+    const top = try english.most_english_like(top_candidates.items);
     const expected = "Now that the party is jumping\n";
     try std.testing.expectEqualStrings(top, expected);
+}
+
+fn worker(in: *std.atomic.Queue([]u8), out: *std.atomic.Queue([]u8), wg: *std.Thread.WaitGroup, allocator: *std.mem.Allocator) !void {
+    wg.start();
+    defer wg.finish();
+
+    const Q = std.atomic.Queue([]u8);
+    while (!in.isEmpty()) {
+        const item = in.get().?;
+        const decoded = try hex.decode(item.data);
+        const possible_candidates = try xor.decipher(decoded);
+        const top_candidate = try english.most_english_like(possible_candidates);
+        const node = try allocator.create(Q.Node);
+        node.* = .{
+            .prev = undefined,
+            .next = undefined,
+            .data = top_candidate,
+        };
+        out.put(node);
+    }
 }
