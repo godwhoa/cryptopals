@@ -78,3 +78,32 @@ fn worker(in: *std.atomic.Queue([]u8), out: *std.atomic.Queue([]u8), wg: *std.Th
         out.put(node);
     }
 }
+
+pub fn main() !void {
+    var allocator = std.heap.page_allocator;
+
+    const Q = std.atomic.Queue([]u8);
+    var lines = try io.read_lines("data/s1c4.txt");
+    var in = std.atomic.Queue([]u8).init();
+    for (lines) |line| {
+        var node = try allocator.create(Q.Node);
+        node.* = .{ .prev = undefined, .next = undefined, .data = line };
+        in.put(node);
+    }
+
+    var out = std.atomic.Queue([]u8).init();
+    var wg = std.Thread.WaitGroup{};
+
+    for (0..5) |_| {
+        _ = try std.Thread.spawn(.{}, worker, .{ &in, &out, &wg, &allocator });
+    }
+    wg.wait();
+
+    var top_candidates = std.ArrayList([]u8).init(allocator);
+    while (out.get()) |node| {
+        try top_candidates.append(node.data);
+    }
+
+    const top = try english.most_english_like(top_candidates.items);
+    std.debug.print("top: {s}\n", .{top});
+}
