@@ -2,6 +2,7 @@ const std = @import("std");
 const hex = @import("hex.zig");
 const base64 = @import("base64.zig");
 const xor = @import("xor.zig");
+const english = @import("english.zig");
 
 test "test set 1 challenge 1" {
     const decoded = try hex.decode("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d");
@@ -16,4 +17,12 @@ test "test set 1 challenge 2" {
     const expected = try hex.decode("746865206b696420646f6e277420706c6179");
     const out = try xor.fixed_xor(src, key);
     try std.testing.expectEqualSlices(u8, out, expected);
+}
+
+test "test set 1 challenge 3" {
+    const encrypted = try hex.decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
+    const candidates = try xor.decipher(encrypted);
+    const top = try english.most_english_like(candidates);
+    const expected = "Cooking MC's like a pound of bacon";
+    try std.testing.expectEqualStrings(top, expected);
 }
