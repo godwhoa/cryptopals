@@ -1,13 +1,30 @@
 const std = @import("std");
 
-pub fn fixed_xor(src: []const u8, key: []const u8) ![]u8 {
-    if (src.len != key.len) return error.InvalidInput;
+pub const KeyTypeTag = enum {
+    key,
+    fixed_key,
+};
 
+pub const Key = union(KeyTypeTag) {
+    key: []const u8,
+    fixed_key: u8,
+};
+
+pub fn fixed_xor(src: []const u8, key: Key) ![]u8 {
     const allocator = std.heap.page_allocator;
     var dst = try allocator.alloc(u8, src.len);
 
-    for (0..src.len) |i| {
-        dst[i] = src[i] ^ key[i];
+    switch (key) {
+        KeyTypeTag.key => |k| {
+            for (0..src.len) |i| {
+                dst[i] = src[i] ^ k[i];
+            }
+        },
+        KeyTypeTag.fixed_key => |k| {
+            for (0..src.len) |i| {
+                dst[i] = src[i] ^ k;
+            }
+        },
     }
 
     return dst;
@@ -16,14 +33,10 @@ pub fn fixed_xor(src: []const u8, key: []const u8) ![]u8 {
 pub fn decipher(encrypted: []const u8) ![][]u8 {
     const allocator = std.heap.page_allocator;
     var candidates = std.ArrayList([]u8).init(allocator);
-    var key = try allocator.alloc(u8, encrypted.len);
-    defer allocator.free(key);
 
     for (0..256) |i| {
-        for (0..encrypted.len) |j| {
-            key[j] = @truncate(i);
-        }
-        const candidate = try fixed_xor(encrypted, key);
+        const fixed_key: u8 = @truncate(i);
+        const candidate = try fixed_xor(encrypted, Key{ .fixed_key = fixed_key });
         try candidates.append(candidate);
     }
 
