@@ -44,8 +44,8 @@ pub fn encode(input: []const u8) ![]const u8 {
     const allocator = std.heap.page_allocator;
     var encoded = try allocator.alloc(u8, input.len * 2);
     for (input, 0..) |value, index| {
-        const first = try table[value >> 4];
-        const second = try table[value & 0xF];
+        const first = table[value >> 4];
+        const second = table[value & 0xF];
         encoded[index * 2] = first;
         encoded[index * 2 + 1] = second;
     }
