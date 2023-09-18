@@ -1,14 +1,14 @@
 const std = @import("std");
 
-fn compare(_: void, a: []const u8, b: []const u8) bool {
+fn compare(_: void, a: [30]u8, b: [30]u8) bool {
     return englishness_score(a) < englishness_score(b);
 }
 
-pub fn most_english_like(candidates: [][]u8) ![]u8 {
-    return std.sort.max([]u8, candidates, {}, compare) orelse error.InvalidInput;
+pub fn most_english_like(candidates: [][30]u8) ![30]u8 {
+    return std.sort.max([30]u8, candidates, {}, compare) orelse error.InvalidInput;
 }
 
-fn englishness_score(input: []const u8) f64 {
+fn englishness_score(input: [30]u8) f64 {
     var score: f64 = 0;
     for (input) |c| {
         if (!std.ascii.isPrint(c)) {

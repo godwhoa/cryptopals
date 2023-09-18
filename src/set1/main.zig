@@ -22,7 +22,7 @@ test "test set 1 challenge 2" {
 
 test "test set 1 challenge 3" {
     const encrypted = try hex.decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
-    const candidates = try xor.decipher(encrypted);
+    const candidates = try xor.decipher(encrypted[0..64].*);
     const top = try english.most_english_like(candidates);
     const expected = "Cooking MC's like a pound of bacon";
     try std.testing.expectEqualStrings(top, expected);
@@ -35,7 +35,7 @@ test "test set 1 challenge 4" {
     defer candidates.deinit();
     for (chiphers) |chipher| {
         const decoded = try hex.decode(chipher);
-        const possible_candidates = try xor.decipher(decoded);
+        const possible_candidates = try xor.decipher(decoded[0..30].*);
         const top_candidate = try english.most_english_like(possible_candidates);
         try candidates.append(top_candidate);
     }
@@ -47,11 +47,14 @@ test "test set 1 challenge 4" {
 pub fn main() !void {
     const chiphers = try io.read_lines("data/s1c4.txt");
     const allocator = std.heap.page_allocator;
-    var candidates = std.ArrayList([]u8).init(allocator);
+    var candidates = std.ArrayList([30]u8).init(allocator);
     defer candidates.deinit();
     for (chiphers) |chipher| {
         const decoded = try hex.decode(chipher);
-        const possible_candidates = try xor.decipher(decoded);
+        if (decoded.len < 30) {
+            continue;
+        }
+        const possible_candidates = try xor.decipher(decoded[0..30].*);
         const top_candidate = try english.most_english_like(possible_candidates);
         try candidates.append(top_candidate);
     }
