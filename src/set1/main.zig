@@ -4,6 +4,8 @@ const base64 = @import("base64.zig");
 const xor = @import("xor.zig");
 const english = @import("english.zig");
 const io = @import("io.zig");
+const hamming = @import("hamming.zig");
+const crack = @import("crack.zig");
 
 test "test set 1 challenge 1" {
     const decoded = try hex.decode("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d");
@@ -52,3 +54,27 @@ test "test set 1 challenge 5" {
     const encoded = try hex.encode(encrypted);
     try std.testing.expectEqualSlices(u8, expected, encoded);
 }
+
+test "test hamming distance" {
+    const dist = try hamming.distance("this is a test", "wokka wokka!!!");
+    try std.testing.expectEqual(dist, 37);
+}
+
+test "test base64 encoding" {
+    const raw = try io.read_all("data/s1c6.txt");
+    const data = try base64.decode(raw);
+    const encoded = try base64.encode(data);
+    try std.testing.expectEqualSlices(u8, raw, encoded);
+}
+
+test "test set 1 challenge 6" {
+    const raw = try io.read_all("data/s1c6.txt");
+    const encrypted = try base64.decode(raw);
+
+    const key = try crack.repeating_key(encrypted);
+    const decrypted = try xor.apply(encrypted, key);
+    try io.write_all("data/s1c6-decrypted.txt", decrypted);
+    try std.testing.expectEqualSlices(u8, "Terminator X: Bring the noise", key.repeating_key);
+}
+
+pub fn main() !void {}

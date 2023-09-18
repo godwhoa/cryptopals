@@ -1,12 +1,47 @@
 const std = @import("std");
 
+const table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+pub fn decode(input: []const u8) ![]const u8 {
+    var reverse_table: [256]u8 = [_]u8{0xff} ** 256;
+    for (table, 0..) |c, i| {
+        reverse_table[c] = @as(u8, @intCast(i));
+    }
+
+    var decoded = std.ArrayList(u8).init(std.heap.page_allocator);
+    defer decoded.deinit();
+
+    var i: usize = 0;
+    while (i < input.len) : (i += 4) {
+        const first = reverse_table[input[i]];
+        const second = reverse_table[input[i + 1]];
+        const thrid = reverse_table[input[i + 2]];
+        const fourth = reverse_table[input[i + 3]];
+
+        // All six from first + first two from second
+        try decoded.append(first << 2 | second >> 4); // always remember these only have six bits set, so >> 4 makes sense
+
+        if (thrid != 64) {
+            // Last four bits from second + first four bits from thrid
+            const r = (second & 0b00001111) << 4 | (thrid >> 2);
+            try decoded.append(r);
+        }
+
+        if (fourth != 64) {
+            // Last two bits from thrid + all six from fourth
+            try decoded.append((thrid & 0b00000011) << 6 | fourth);
+        }
+    }
+
+    return decoded.toOwnedSlice();
+}
+
 pub fn encode(input: []const u8) ![]const u8 {
     if (input.len == 0) return error.InvalidInput;
 
     var encoded = std.ArrayList(u8).init(std.heap.page_allocator);
     defer encoded.deinit();
 
-    const table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     var i: usize = 0;
     while (i < input.len) {
         // First six bits of first byte

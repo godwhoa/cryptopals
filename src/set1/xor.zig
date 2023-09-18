@@ -43,7 +43,7 @@ pub fn decipher(encrypted: []const u8) ![][]u8 {
     var candidates = std.ArrayList([]u8).init(allocator);
 
     for (0..256) |i| {
-        const fixed_key: u8 = @truncate(i);
+        const fixed_key: u8 = @as(u8, @intCast(i));
         const candidate = try apply(encrypted, Key{ .fixed_key = fixed_key });
         try candidates.append(candidate);
     }
