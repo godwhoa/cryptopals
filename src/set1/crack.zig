@@ -9,7 +9,10 @@ pub fn repeating_key(encrypted: []const u8) !xor.Key {
     var best_score_overall: f64 = 0.0;
 
     for (best_key_sizes) |c| {
-        const blocks = try transpose(encrypted, c.key_size);
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+
+        const blocks = try transpose(arena.allocator(), encrypted, c.key_size);
         var key = std.ArrayList(u8).init(std.heap.page_allocator);
         defer key.deinit();
 
@@ -18,14 +21,12 @@ pub fn repeating_key(encrypted: []const u8) !xor.Key {
             const result = try best_possible_key(block);
             try key.append(result.key);
             total_score += result.score;
-            std.heap.page_allocator.free(block);
         }
 
         if (total_score > best_score_overall) {
             best_key_overall = try key.toOwnedSlice();
             best_score_overall = total_score;
         }
-        std.heap.page_allocator.free(blocks);
     }
 
     return xor.Key{ .repeating_key = best_key_overall };
@@ -53,10 +54,10 @@ fn best_possible_key(encrypted: []const u8) !Result {
     return Result{ .key = best_key, .score = best_score };
 }
 
-fn transpose(encrypted: []const u8, key_size: usize) ![][]u8 {
-    var blocks: [][]u8 = try std.heap.page_allocator.alloc([]u8, key_size);
+fn transpose(allocator: std.mem.Allocator, encrypted: []const u8, key_size: usize) ![][]u8 {
+    var blocks: [][]u8 = try allocator.alloc([]u8, key_size);
     for (0..key_size) |i| {
-        blocks[i] = try std.heap.page_allocator.alloc(u8, (encrypted.len / key_size) + 1);
+        blocks[i] = try allocator.alloc(u8, (encrypted.len / key_size) + 1);
     }
 
     for (0..encrypted.len) |i| {
